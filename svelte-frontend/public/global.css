@@ -1,0 +1,100 @@
+html,
+body {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	background-color: #f9f9f9;
+	/* Light background */
+}
+
+body {
+	color: #333;
+	margin: 0;
+	padding: 20px;
+	/* Added padding for spacing */
+	box-sizing: border-box;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+a {
+	color: rgb(0, 100, 200);
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:visited {
+	color: rgb(0, 80, 160);
+}
+
+label {
+	display: block;
+	margin-bottom: 10px;
+	/* Spacing between labels */
+	font-weight: bold;
+}
+
+input,
+button,
+select,
+textarea {
+	font-family: inherit;
+	font-size: inherit;
+	padding: 12px;
+	/* Increased padding */
+	margin: 0 0 10px 0;
+	/* Increased spacing */
+	box-sizing: border-box;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	/* Rounded corners */
+	width: 100%;
+	/* Full width for form elements */
+	max-width: 400px;
+}
+
+input:disabled {
+	color: #ccc;
+}
+
+button {
+	color: #fff;
+	background-color: #007bff;
+	/* Primary button color */
+	outline: none;
+	padding: 10px 20px;
+	border: none;
+	cursor: pointer;
+	transition: background-color 0.3s ease;
+}
+
+button:disabled {
+	color: #999;
+}
+
+button:not(:disabled):active,
+button:not(:disabled):hover {
+	background-color: #0056b3;
+	/* Darker button color on hover */
+}
+
+button:focus {
+	border-color: #666;
+}
+
+.sidebar {
+	background-color: #f1f1f1;
+	padding: 20px;
+	border-radius: 8px;
+}
+
+.assignment {
+	background-color: #fff;
+	padding: 15px;
+	margin-bottom: 10px;
+	border-radius: 5px;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+	/* Subtle shadow for assignments */
+}

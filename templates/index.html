@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Assignments</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .assignment {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 class="my-4">Add Classes</h1>
+
+    <div class="row">
+        <div class="col-md-6">
+            <form id="class-form" onsubmit="event.preventDefault();">
+                <div class="mb-3">
+                    <label for="classType" class="form-label">Class Type</label>
+                    <select id="classType" class="form-select">
+                        <option value="canvas">Canvas</option>
+                        <option value="docx">DOCX</option>
+                        <option value="pdf">PDF</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="courseId" class="form-label">Course ID</label>
+                    <input type="text" id="courseId" class="form-control" placeholder="Enter Course ID">
+                </div>
+
+                <div class="mb-3" id="fileIdField" style="display:none;">
+                    <label for="fileId" class="form-label">File ID</label>
+                    <input type="text" id="fileId" class="form-control" placeholder="Enter File ID (if applicable)">
+                </div>
+
+                <button type="button" class="btn btn-primary" onclick="addClass()">Add Class</button>
+                <button type="button" class="btn btn-success" onclick="fetchAssignments()">Run</button>
+            </form>
+
+            <h3 class="my-4">Class List</h3>
+            <ul id="classList" class="list-group"></ul>
+        </div>
+
+        <div class="col-md-6">
+            <h3 class="my-4">Assignments Due Today</h3>
+            <div id="assignmentsList"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let classes = [];
+
+    // Add a class to the list
+    function addClass() {
+        const classType = document.getElementById('classType').value;
+        const courseId = document.getElementById('courseId').value;
+        const fileId = document.getElementById('fileId').value;
+
+        if (!courseId) {
+            alert('Please enter a Course ID.');
+            return;
+        }
+
+        const newClass = { type: classType, course_id: courseId, file_id: fileId };
+        classes.push(newClass);
+
+        updateClassList();
+        document.getElementById('courseId').value = '';
+        document.getElementById('fileId').value = '';
+    }
+
+    // Update the class list displayed on the frontend
+    function updateClassList() {
+        const classList = document.getElementById('classList');
+        classList.innerHTML = '';
+        classes.forEach((cls) => {
+            const listItem = document.createElement('li');
+            listItem.className = 'list-group-item';
+            listItem.innerText = `${cls.type} - Course ID: ${cls.course_id} ${cls.file_id ? ' | File ID: ' + cls.file_id : ''}`;
+            classList.appendChild(listItem);
+        });
+    }
+
+    // Fetch assignments from the backend (Flask) when the Run button is clicked
+    function fetchAssignments() {
+        console.log("Classes being sent to backend: ", classes); // Debugging to confirm classes list
+
+        fetch('/fetch-assignments', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ classes }) // Pass the classes list to the backend
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log("Fetched Assignments: ", data); // Debugging: Log the fetched data
+
+            const assignmentsList = document.getElementById('assignmentsList');
+            assignmentsList.innerHTML = '';
+            if (data.length === 0) {
+                assignmentsList.innerHTML = '<p>No assignments due today.</p>';
+            } else {
+                data.forEach(assignment => {
+                    const div = document.createElement('div');
+                    div.className = 'assignment';
+                    div.innerHTML = `<h4>${assignment.title}</h4><p>${assignment.description}</p><small>Due: ${assignment.due_date}</small>`;
+                    assignmentsList.appendChild(div);
+                });
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    // Display or hide the File ID field based on the class type
+    document.getElementById('classType').addEventListener('change', function () {
+        const classType = document.getElementById('classType').value;
+        if (classType === 'docx' || classType === 'pdf') {
+            document.getElementById('fileIdField').style.display = 'block';
+        } else {
+            document.getElementById('fileIdField').style.display = 'none';
+        }
+    });
+</script>
+
+</body>
+</html>
