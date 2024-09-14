@@ -1,3 +1,5 @@
-CANVAS_API_KEY = '349~htfvJU9YMnXHe6KHx49h8G9WKGJ6AHFhTe4xZNzaWY7aEVFJzTkQnRhV7uX3XaDa'
+import os
+
+CANVAS_API_KEY = os.environ.get("CANVAS_API_KEY")
 CANVAS_BASE_URL = 'https://hub.hw.com/api/v1'
-OPENAI_API_KEY = 'sk-None-3AJmdhWJCdcdHbQ3RLkUT3BlbkFJL5khaiQv4YiEMEWK6s50'
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
