@@ -3,22 +3,8 @@ from instructor import from_openai, Mode
 from pydantic import BaseModel, Field
 from typing import List
 from openai import OpenAI
-from config import OPENAI_API_KEY
+from config import parse_assignments_from_text
 
-# Define the Assignment model (for structured response)
-class Assignment(BaseModel):
-    title: str = Field(description="The title of the assignment")
-    due_date: str = Field(description="The due date of the assignment")
-    description: str = Field(description="A brief description of the assignment")
-
-class MultiAssignment(BaseModel):
-    tasks: List[Assignment] = Field(description="List of assignments extracted from the document")
-
-# Initialize the OpenAPI Client with Instructor
-client = OpenAI(
-  api_key=OPENAI_API_KEY
-)
-client = from_openai(client)
 
 def extract_text_from_docx(docx_file):
     """
@@ -49,26 +35,9 @@ def extract_assignments_from_docx(docx_file):
     try:
         # Extract the text from the DOCX file
         docx_text = extract_text_from_docx(docx_file)
-        
+        return parse_assignments_from_text(docx_text)
         # Define the prompt to ask GPT to extract assignments
-        prompt = (
-            "You are tasked with extracting assignments from the following DOCX content. "
-            "Please provide a list of assignments with titles, due dates, and brief descriptions. Format the due dates in python datetime library format.\n\n"
-            f"Text:\n{docx_text}"
-        )
         
-        # Call GPT model with structured response model MultiAssignment using the Instructor client
-        resp = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            response_model=MultiAssignment,  # Expect structured response
-            max_retries=3  # Using structured mode for well-defined output
-        )
-
-        # Return the list of assignments
-        return resp.tasks  # This returns a list of Assignment objects
 
     except Exception as e:
         print(f"Error while extracting assignments from DOCX: {e}")

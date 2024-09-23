@@ -21,7 +21,6 @@ def fetch_assignments():
     print("Classes list: ", classes)  # Check if the classes list is correct
 
     today = datetime.today().date()
-    today = today - timedelta(days=1)
     assignments_list = []
 
     for class_info in classes:
@@ -40,7 +39,7 @@ def fetch_assignments():
             print("DOCX assignments: ", assignments)
         elif class_type == 'pdf':
             pdf_file = canvas_api.get_pdf_content(course_id, file_id)
-            assignments = pdf_extractor.extract_text_from_pdf(pdf_file)
+            assignments = pdf_extractor.extract_assignments_from_pdf(pdf_file)
             print("PDF assignments: ", assignments)
 
         for assignment in assignments:
@@ -50,16 +49,13 @@ def fetch_assignments():
                     continue
                 
                 due_date = datetime.fromisoformat(assignment.due_date.replace('Z', '')).date()
-                print(due_date)
-                print(today)
-                print(due_date == today)
                 
-                #if due_date == today:
-                assignments_list.append({
-                    'title': assignment.title,
-                    'due_date': due_date.strftime('%Y-%m-%d'),
-                    'description': assignment.description,
-                    })
+                if due_date == today or due_date == today + timedelta(days=1):
+                    assignments_list.append({
+                        'title': assignment.title,
+                        'due_date': due_date.strftime('%Y-%m-%d'),
+                        'description': assignment.description,
+                         })
             except ValueError as e:
                 print(f"Error parsing date for assignment {assignment.title}: {e}")
 

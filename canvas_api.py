@@ -1,29 +1,9 @@
 import requests
-from config import CANVAS_API_KEY, CANVAS_BASE_URL
-from pydantic import BaseModel, Field
-from openai import OpenAI
-from instructor import from_openai, Mode
-from typing import List
-from google.oauth2.credentials import Credentials
-from config import OPENAI_API_KEY
+from config import CANVAS_API_KEY, CANVAS_BASE_URL, parse_assignments_from_text
 
 headers = {
     'Authorization': f'Bearer {CANVAS_API_KEY}'
 }
-
-class Assignment(BaseModel):
-    title: str = Field(description="The title of the assignment")
-    due_date: str = Field(description="The due date of the assignment")
-    description: str = Field(description="A brief description of the assignment")
-
-class MultiAssignment(BaseModel):
-    tasks: List[Assignment] = Field(description="List of assignments extracted from the document")
-
-# Initialize the OpenAPI Client with Instructor
-client = OpenAI(
-  api_key=OPENAI_API_KEY
-)
-client = from_openai(client)
 
 
 def get_assignments(course_id):
@@ -76,25 +56,7 @@ def extract_assignments_content(course_id):
     try:
         assignments = get_assignments(course_id)
         # Define the prompt to ask GPT to extract assignments
-        prompt = (
-            "You are tasked with extracting assignments from the following canvas api assignments array. "
-            "Please provide a list of assignments with titles, due dates, and brief descriptions. Format the times in python datetime library format.\n\n"
-            f"Text:\n{assignments}"
-        )
-        #print(prompt)
-        
-        # Call GPT model with structured response model MultiAssignment using the Instructor client
-        resp = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            response_model=MultiAssignment,  # Expect structured response
-            max_retries=8,  # Retry up to 8 times
-        )
-        print(resp.tasks)
-        # Return the list of assignments
-        return resp.tasks  # This returns a list of Assignment objects
+        return parse_assignments_from_text(assignments)
 
     except Exception as e:
         print(f"Error while scraping Canvas Assignments: {e}")
