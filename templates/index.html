@@ -26,6 +26,11 @@
         <div class="col-md-6">
             <form id="class-form" onsubmit="event.preventDefault();">
                 <div class="mb-3">
+                    <label for="className" class="form-label">Class Name</label>
+                    <input type="text" id="className" class="form-control" placeholder="Enter Class Name">
+                </div>
+
+                <div class="mb-3">
                     <label for="classType" class="form-label">Class Type</label>
                     <select id="classType" class="form-select">
                         <option value="canvas">Canvas</option>
@@ -53,7 +58,7 @@
         </div>
 
         <div class="col-md-6">
-            <h3 class="my-4">Assignments Due Today</h3>
+            <h3 class="my-4">Assignments Due This Week</h3>
             <div id="assignmentsList"></div>
         </div>
     </div>
@@ -62,21 +67,40 @@
 <script>
     let classes = [];
 
+    // Load classes from server when the page loads
+    window.onload = function() {
+        fetch('/classes', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            classes = data.classes || [];
+            updateClassList();
+        })
+        .catch(error => console.error('Error fetching classes:', error));
+    };
+
     // Add a class to the list
     function addClass() {
+        const className = document.getElementById('className').value;
         const classType = document.getElementById('classType').value;
         const courseId = document.getElementById('courseId').value;
         const fileId = document.getElementById('fileId').value;
 
-        if (!courseId) {
-            alert('Please enter a Course ID.');
+        if (!className || !courseId) {
+            alert('Please enter both Class Name and Course ID.');
             return;
         }
 
-        const newClass = { type: classType, course_id: courseId, file_id: fileId };
+        const newClass = { class_name: className, type: classType, course_id: courseId, file_id: fileId };
         classes.push(newClass);
 
         updateClassList();
+        saveClasses();
+        document.getElementById('className').value = '';
         document.getElementById('courseId').value = '';
         document.getElementById('fileId').value = '';
     }
@@ -85,12 +109,40 @@
     function updateClassList() {
         const classList = document.getElementById('classList');
         classList.innerHTML = '';
-        classes.forEach((cls) => {
+        classes.forEach((cls, index) => {
             const listItem = document.createElement('li');
-            listItem.className = 'list-group-item';
-            listItem.innerText = `${cls.type} - Course ID: ${cls.course_id} ${cls.file_id ? ' | File ID: ' + cls.file_id : ''}`;
+            listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+            listItem.innerHTML = `
+                <div>
+                    <strong>${cls.class_name}</strong> (${cls.type}) - Course ID: ${cls.course_id} ${cls.file_id ? ' | File ID: ' + cls.file_id : ''}
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="removeClass(${index})">Remove</button>
+            `;
             classList.appendChild(listItem);
         });
+    }
+
+    // Save classes to the server
+    function saveClasses() {
+        fetch('/classes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ classes })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Classes saved successfully.');
+        })
+        .catch(error => console.error('Error saving classes:', error));
+    }
+
+    // Remove a class from the list
+    function removeClass(index) {
+        classes.splice(index, 1);
+        updateClassList();
+        saveClasses();
     }
 
     // Fetch assignments from the backend (Flask) when the Run button is clicked
@@ -102,7 +154,7 @@
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ classes }) // Pass the classes list to the backend
+            body: JSON.stringify({}) // No need to send classes; backend will use saved classes
         })
         .then(response => response.json())
         .then(data => {
@@ -111,12 +163,16 @@
             const assignmentsList = document.getElementById('assignmentsList');
             assignmentsList.innerHTML = '';
             if (data.length === 0) {
-                assignmentsList.innerHTML = '<p>No assignments due today.</p>';
+                assignmentsList.innerHTML = '<p>No assignments due this week.</p>';
             } else {
                 data.forEach(assignment => {
                     const div = document.createElement('div');
                     div.className = 'assignment';
-                    div.innerHTML = `<h4>${assignment.title}</h4><p>${assignment.description}</p><small>Due: ${assignment.due_date}</small>`;
+                    div.innerHTML = `
+                        <h4>${assignment.title}</h4>
+                        <p>${assignment.description}</p>
+                        <small>Due: ${assignment.due_date} | Class: ${assignment.class_name}</small>
+                    `;
                     assignmentsList.appendChild(div);
                 });
             }

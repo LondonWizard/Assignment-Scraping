@@ -31,7 +31,7 @@ def parse_assignments_from_text(text):
         
         # Call GPT model with structured response model MultiAssignment using the Instructor client
     resp = client.chat.completions.create(
-        model="o1-preview",
+        model="gpt-4o",
         messages=[
             {"role": "user", "content": prompt}
         ],
