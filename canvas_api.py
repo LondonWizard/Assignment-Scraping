@@ -1,14 +1,15 @@
+# canvas_api.py
+
 import requests
-from config import CANVAS_API_KEY, CANVAS_BASE_URL, parse_assignments_from_text, Assignment, MultiAssignment
+from config import CANVAS_BASE_URL, parse_assignments_from_text, Assignment, MultiAssignment
 
-headers = {
-    'Authorization': f'Bearer {CANVAS_API_KEY}'
-}
-
-def get_assignments(course_id):
+def get_assignments(course_id, access_token):
     assignments = []
-    url = f'{CANVAS_BASE_URL}/courses/{course_id}/assignments'
+    url = f'{CANVAS_BASE_URL}/api/v1/courses/{course_id}/assignments'
     params = {'per_page': 100}  # Fetch up to 100 assignments per page
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
 
     while url:
         response = requests.get(url, headers=headers, params=params)
@@ -33,11 +34,13 @@ def get_assignments(course_id):
     print(f"Total assignments retrieved: {len(assignments)}")
     return assignments
 
-
-def list_files(course_id):
+def list_files(course_id, access_token):
     files = []
-    url = f'{CANVAS_BASE_URL}/courses/{course_id}/files'
+    url = f'{CANVAS_BASE_URL}/api/v1/courses/{course_id}/files'
     params = {'per_page': 100}
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
 
     while url:
         response = requests.get(url, headers=headers, params=params)
@@ -63,48 +66,53 @@ def list_files(course_id):
     print(f"Total files retrieved: {len(files)}")
     return files
 
-
-
-def get_pdf_content(course_id, file_id):
-    url = f'{CANVAS_BASE_URL}/courses/{course_id}/files/{file_id}?access_token={CANVAS_API_KEY}'
-    response = requests.get(url)
+def get_pdf_content(course_id, file_id, access_token):
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    url = f'{CANVAS_BASE_URL}/api/v1/courses/{course_id}/files/{file_id}'
+    response = requests.get(url, headers=headers)
     response.raise_for_status()
     file_url = response.json()['url']
     
     # Download the PDF
-    pdf_response = requests.get(file_url)
+    pdf_response = requests.get(file_url, headers=headers)
     with open('file.pdf', 'wb') as f:
         f.write(pdf_response.content)
 
     return 'file.pdf'
 
-def get_docx_content(course_id, file_id):
+def get_docx_content(course_id, file_id, access_token):
     """
     Downloads DOCX content from a course file in Canvas.
 
     Args:
     - course_id (str): The ID of the course.
     - file_id (str): The ID of the file to download.
+    - access_token (str): The user's access token.
 
     Returns:
     - str: The local file path where the DOCX file is saved.
     """
-    url = f'{CANVAS_BASE_URL}/courses/{course_id}/files/{file_id}?access_token={CANVAS_API_KEY}'
-    response = requests.get(url)
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+    url = f'{CANVAS_BASE_URL}/api/v1/courses/{course_id}/files/{file_id}'
+    response = requests.get(url, headers=headers)
     response.raise_for_status()
     file_url = response.json()['url']
     
     # Download the DOCX file
-    docx_response = requests.get(file_url)
+    docx_response = requests.get(file_url, headers=headers)
     local_filename = 'file.docx'
     with open(local_filename, 'wb') as f:
         f.write(docx_response.content)
 
     return local_filename
 
-def extract_assignments_content(course_id):
+def extract_assignments_content(course_id, access_token):
     try:
-        assignments_data = get_assignments(course_id)
+        assignments_data = get_assignments(course_id, access_token)
         assignment_objects = []
         for assignment in assignments_data:
             name = assignment.get('name')

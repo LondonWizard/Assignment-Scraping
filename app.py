@@ -1,4 +1,6 @@
-from flask import Flask, request, jsonify, render_template
+# app.py
+
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from datetime import datetime, timedelta
 import canvas_api
 import pdf_extractor
@@ -6,8 +8,19 @@ import docx_extractor
 import json
 import os
 import traceback
+import requests
+import secrets
 
 app = Flask(__name__)
+
+# Set the secret key for session management
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-secret-key')  # Replace 'your-secret-key' with a secure random string in production
+
+# Canvas OAuth2 configuration
+CANVAS_BASE_URL = 'https://canvas.instructure.com'  # Replace with your Canvas instance URL
+CLIENT_ID = 'your_client_id'  # Replace with your client_id
+CLIENT_SECRET = 'your_client_secret'  # Replace with your client_secret
+REDIRECT_URI = 'http://localhost:5000/oauth2callback'  # Replace with your redirect URI
 
 # Path to the JSON file where classes data will be stored
 CLASSES_FILE = 'classes_data.json'
@@ -29,6 +42,73 @@ def save_classes(classes):
         json.dump(classes, f)
         print("Classes saved to file.")
 
+# Route to serve the main HTML page
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+# Route to start the OAuth2 login flow
+@app.route('/login')
+def login():
+    state = secrets.token_urlsafe(16)
+    session['oauth_state'] = state
+    canvas_authorize_url = f"{CANVAS_BASE_URL}/login/oauth2/auth"
+    params = {
+        'client_id': CLIENT_ID,
+        'response_type': 'code',
+        'redirect_uri': REDIRECT_URI,
+        'state': state,
+        # Specify the scopes your app needs; adjust as necessary
+        'scope': 'url:GET|/api/v1/courses url:GET|/api/v1/courses/:course_id/assignments url:GET|/api/v1/courses/:course_id/files'
+    }
+    url = requests.Request('GET', canvas_authorize_url, params=params).prepare().url
+    return redirect(url)
+
+# Route to handle the OAuth2 callback
+@app.route('/oauth2callback')
+def oauth2callback():
+    error = request.args.get('error')
+    if error:
+        return f"Error: {error}"
+
+    state = request.args.get('state')
+    if state != session.get('oauth_state'):
+        return "Error: Invalid state parameter"
+
+    code = request.args.get('code')
+    if not code:
+        return "Error: No code provided."
+
+    # Exchange code for access token
+    token_url = f"{CANVAS_BASE_URL}/login/oauth2/token"
+    data = {
+        'grant_type': 'authorization_code',
+        'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET,
+        'redirect_uri': REDIRECT_URI,
+        'code': code
+    }
+    response = requests.post(token_url, data=data)
+    if response.status_code != 200:
+        return f"Error fetching token: {response.text}"
+
+    token_info = response.json()
+    access_token = token_info['access_token']
+    refresh_token = token_info.get('refresh_token')
+
+    # Store tokens in the session
+    session['access_token'] = access_token
+    session['refresh_token'] = refresh_token
+
+    # Redirect to the main page or dashboard
+    return redirect(url_for('index'))
+
+# Route to logout
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
+
 # API endpoint to add or update classes
 @app.route('/classes', methods=['GET', 'POST'])
 def manage_classes():
@@ -45,6 +125,11 @@ def manage_classes():
 # API endpoint to fetch assignments
 @app.route('/fetch-assignments', methods=['POST'])
 def fetch_assignments():
+    # Check if user is authenticated
+    if 'access_token' not in session:
+        return redirect(url_for('login'))
+
+    access_token = session['access_token']
     data = request.json
     print("Received data:", data)
 
@@ -66,24 +151,22 @@ def fetch_assignments():
 
         print(f"Processing class: Name={class_name}, Type={class_type}, Course ID={course_id}, File ID={file_id}")
 
-
         if class_type == 'canvas':
-            multi_assignment = canvas_api.extract_assignments_content(course_id)
+            multi_assignment = canvas_api.extract_assignments_content(course_id, access_token)
             assignments = multi_assignment.tasks
             print("Canvas assignments:", assignments)
         elif class_type == 'docx':
-            docx_file = canvas_api.get_docx_content(course_id, file_id)
+            docx_file = canvas_api.get_docx_content(course_id, file_id, access_token)
             multi_assignment = docx_extractor.extract_assignments_from_docx(docx_file)
             assignments = multi_assignment.tasks
             print("DOCX assignments:", assignments)
         elif class_type == 'pdf':
-            pdf_file = canvas_api.get_pdf_content(course_id, file_id)
+            pdf_file = canvas_api.get_pdf_content(course_id, file_id, access_token)
             multi_assignment = pdf_extractor.extract_assignments_from_pdf(pdf_file)
             assignments = multi_assignment.tasks
             print("PDF assignments:", assignments)
         else:
-            # print(f"Unknown class type: {class_type}")
-            continue  # Properly indented inside the else block
+            continue  # Skip unknown class types
 
         if not assignments:
             print(f"No assignments found for class '{class_name}'.")
@@ -112,11 +195,6 @@ def fetch_assignments():
 
     print("Assignments List:", assignments_list)
     return jsonify(assignments_list)
-
-# Route to serve the main HTML page
-@app.route('/')
-def index():
-    return render_template('index.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
