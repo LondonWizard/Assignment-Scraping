@@ -1,5 +1,5 @@
 import requests
-from config import CANVAS_API_KEY, CANVAS_BASE_URL, parse_assignments_from_text
+from config import CANVAS_API_KEY, CANVAS_BASE_URL, parse_assignments_from_text, Assignment, MultiAssignment
 
 headers = {
     'Authorization': f'Bearer {CANVAS_API_KEY}'
@@ -105,20 +105,24 @@ def get_docx_content(course_id, file_id):
 def extract_assignments_content(course_id):
     try:
         assignments_data = get_assignments(course_id)
-        assignments_list = []
+        assignment_objects = []
         for assignment in assignments_data:
             name = assignment.get('name')
-            description = assignment.get('description')
+            description = assignment.get('description') or ''
             due_at = assignment.get('due_at')
             if due_at:
-                assignments_list.append({
-                    'title': name,
-                    'description': description,
-                    'due_date': due_at
-                })
+                # Create an Assignment object
+                assignment_obj = Assignment(
+                    title=name,
+                    description=description,
+                    due_date=due_at
+                )
+                assignment_objects.append(assignment_obj)
             else:
                 print(f"Assignment '{name}' does not have a due date and will be skipped.")
-        return assignments_list
+        # Return a MultiAssignment object
+        multi_assignment = MultiAssignment(tasks=assignment_objects)
+        return multi_assignment
     except Exception as e:
         print(f"Error while extracting Canvas Assignments: {e}")
-        return []
+        return MultiAssignment(tasks=[])

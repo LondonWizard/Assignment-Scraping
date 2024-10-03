@@ -10,7 +10,7 @@ export default function Home() {
 
   // Load classes from the server when the page loads
   useEffect(() => {
-    fetch('/classes')
+    fetch('/api/classes')
       .then(response => response.json())
       .then(data => {
         setClasses(data.classes || []);
@@ -39,7 +39,7 @@ export default function Home() {
 
   // Save classes to the server
   const saveClasses = (classesToSave) => {
-    fetch('/classes', {
+    fetch('/api/classes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ classes: classesToSave }),

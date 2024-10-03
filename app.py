@@ -1,14 +1,13 @@
 from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
 from datetime import datetime, timedelta
 import canvas_api
 import pdf_extractor
 import docx_extractor
 import json
 import os
+import traceback
 
 app = Flask(__name__)
-# CORS(app)  # Enable CORS if needed (you might not need this for local use)
 
 # Path to the JSON file where classes data will be stored
 CLASSES_FILE = 'classes_data.json'
@@ -47,16 +46,16 @@ def manage_classes():
 @app.route('/fetch-assignments', methods=['POST'])
 def fetch_assignments():
     data = request.json
-    print("Received data:", data)  # Ensure data is being received
+    print("Received data:", data)
 
     # Load classes from the file if not provided in the request
     if not data or 'classes' not in data:
         classes = load_classes()
     else:
         classes = data.get('classes', [])
-    print("Classes list:", classes)  # Check if the classes list is correct
+    print("Classes list:", classes)
 
-    today = datetime.today().date()
+    today = datetime.now().date()
     assignments_list = []
 
     for class_info in classes:
@@ -67,46 +66,49 @@ def fetch_assignments():
 
         print(f"Processing class: Name={class_name}, Type={class_type}, Course ID={course_id}, File ID={file_id}")
 
+
         if class_type == 'canvas':
-            assignments = canvas_api.extract_assignments_content(course_id)
+            multi_assignment = canvas_api.extract_assignments_content(course_id)
+            assignments = multi_assignment.tasks
             print("Canvas assignments:", assignments)
         elif class_type == 'docx':
             docx_file = canvas_api.get_docx_content(course_id, file_id)
-            assignments = docx_extractor.extract_assignments_from_docx(docx_file)
+            multi_assignment = docx_extractor.extract_assignments_from_docx(docx_file)
+            assignments = multi_assignment.tasks
             print("DOCX assignments:", assignments)
         elif class_type == 'pdf':
             pdf_file = canvas_api.get_pdf_content(course_id, file_id)
-            assignments = pdf_extractor.extract_assignments_from_pdf(pdf_file)
+            multi_assignment = pdf_extractor.extract_assignments_from_pdf(pdf_file)
+            assignments = multi_assignment.tasks
             print("PDF assignments:", assignments)
         else:
-            print(f"Unknown class type: {class_type}")
+            # print(f"Unknown class type: {class_type}")
+            continue  # Properly indented inside the else block
+
+        if not assignments:
+            print(f"No assignments found for class '{class_name}'.")
             continue
 
-
         for assignment in assignments:
-            print(assignment)
             try:
-                if not assignment['due_date']:
-                    print(f"Skipping assignment '{assignment['title']}' due to missing due date.")
+                print("Processing assignment:", assignment)
+                if not assignment.due_date:
+                    print(f"Skipping assignment '{assignment.title}' due to missing due date.")
                     continue
 
-                due_date_str = assignment['due_date']
-                # Remove timezone information if present
-                due_date_str = due_date_str.split('T')[0]
-                due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+                due_date_str = assignment.due_date
+                due_date = datetime.fromisoformat(due_date_str.replace('Z', '+00:00')).date()
 
-                # Check if due_date is within the next 7 days (including today)
                 if today <= due_date <= today + timedelta(days=7):
                     assignments_list.append({
                         'class_name': class_name,
-                        'title': assignment['title'],
+                        'title': assignment.title,
                         'due_date': due_date.strftime('%Y-%m-%d'),
-                        'description': assignment['description'],
+                        'description': assignment.description,
                     })
-            except ValueError as e:
-                print(f"Error parsing date for assignment '{assignment['title']}': {e}")
-            except KeyError as e:
-                print(f"Missing key {e} in assignment: {assignment}")
+            except Exception as e:
+                print(f"Error processing assignment '{assignment}': {e}")
+                traceback.print_exc()
 
     print("Assignments List:", assignments_list)
     return jsonify(assignments_list)

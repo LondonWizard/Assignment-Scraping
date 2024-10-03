@@ -25,7 +25,7 @@ class MultiAssignment(BaseModel):
 def parse_assignments_from_text(text):
     prompt = (
             "You are tasked with extracting assignments from the following content. "
-            "Please provide a list of assignments with titles, due dates, and brief descriptions. Format the due dates in python datetime library format.\n\n"
+            "Please provide a list of assignments with titles, due dates, and brief descriptions. Format the due dates in python datetime library format. Be careful to make sure that the content given is a list of dates the homework is due, and not the dates and times that the classes are held, and each classes respective homework. If a date lists the class date and time, and homework that is due before next class, set the due date of the assignment to the next class date, or if not specified in the document, one business day more than the next business day.\n\n"
             f"Text:\n{text}"
         )
         
@@ -38,6 +38,5 @@ def parse_assignments_from_text(text):
         response_model=MultiAssignment,  # Expect structured response
         max_retries=8  # Using structured mode for well-defined output
     )
-
         # Return the list of assignments
-    return resp.tasks  # This returns a list of Assignment objects
+    return resp  # This returns a list of Assignment objects

@@ -39,7 +39,7 @@ def main():
     if google_doc_assignments:
         for assignment in google_doc_assignments:
             print(f"Assignment: {assignment.title}, Due: {assignment.due_date}, Description: {assignment.description}")
-"""
+    """
 if __name__ == "__main__":
     main()
     

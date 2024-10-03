@@ -22,6 +22,7 @@ def extract_text_from_docx(docx_file):
         full_text.append(para.text)
     return '\n'.join(full_text)
 
+
 def extract_assignments_from_docx(docx_file):
     """
     Extracts assignments from a DOCX file using GPT-4 and the Instructor client.
