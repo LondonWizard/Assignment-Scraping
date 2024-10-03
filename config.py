@@ -7,6 +7,8 @@ from instructor import from_openai, Mode
 CANVAS_API_KEY = os.environ.get("CANVAS_API_KEY")
 CANVAS_BASE_URL = 'https://hub.hw.com/api/v1'
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+#CLIENT_ID = os.environ.get('CLIENT_ID')
+#CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
 
 client = OpenAI(
   api_key=OPENAI_API_KEY

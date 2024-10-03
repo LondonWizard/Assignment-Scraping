@@ -1,26 +1,26 @@
 # app.py
 
+import os
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from datetime import datetime, timedelta
 import canvas_api
 import pdf_extractor
 import docx_extractor
 import json
-import os
 import traceback
 import requests
 import secrets
+from config import CANVAS_API_KEY
 
 app = Flask(__name__)
 
 # Set the secret key for session management
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-secret-key')  # Replace 'your-secret-key' with a secure random string in production
+app.secret_key = os.environ.get('FLASK_SECRET_KEY')
 
 # Canvas OAuth2 configuration
-CANVAS_BASE_URL = 'https://canvas.instructure.com'  # Replace with your Canvas instance URL
-CLIENT_ID = 'your_client_id'  # Replace with your client_id
-CLIENT_SECRET = 'your_client_secret'  # Replace with your client_secret
-REDIRECT_URI = 'http://localhost:5000/oauth2callback'  # Replace with your redirect URI
+CANVAS_BASE_URL = 'https://canvas.instructure.com'  # Replace if using a different Canvas instance
+
+REDIRECT_URI = 'https://yourdomain.com/oauth2callback'  # Replace with your actual domain
 
 # Path to the JSON file where classes data will be stored
 CLASSES_FILE = 'classes_data.json'
@@ -126,10 +126,10 @@ def manage_classes():
 @app.route('/fetch-assignments', methods=['POST'])
 def fetch_assignments():
     # Check if user is authenticated
-    if 'access_token' not in session:
-        return redirect(url_for('login'))
+    #if 'access_token' not in session:
+        #return redirect(url_for('login'))
 
-    access_token = session['access_token']
+    access_token = CANVAS_API_KEY #session['access_token']
     data = request.json
     print("Received data:", data)
 
@@ -197,4 +197,4 @@ def fetch_assignments():
     return jsonify(assignments_list)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0')
