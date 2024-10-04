@@ -42,6 +42,28 @@ def save_classes(classes):
         json.dump(classes, f)
         print("Classes saved to file.")
 
+def extract_ids_from_link(link):
+    course_id = None
+    file_id = None
+
+    # Pattern for file link
+    file_pattern = r'https?://[\w\.]+/courses/(\d+)/files/(\d+)'
+    # Pattern for course link
+    course_pattern = r'https?://[\w\.]+/courses/(\d+)'
+
+    # Try to match file link first
+    match = re.match(file_pattern, link)
+    if match:
+        course_id = match.group(1)
+        file_id = match.group(2)
+    else:
+        # Try to match course link
+        match = re.match(course_pattern, link)
+        if match:
+            course_id = match.group(1)
+
+    return course_id, file_id
+
 # Route to serve the main HTML page
 @app.route('/')
 def index():
@@ -116,6 +138,17 @@ def manage_classes():
         data = request.json
         print("Received data to save classes:", data)
         classes = data.get('classes', [])
+        # Process each class to extract IDs from links
+        for class_info in classes:
+            link = class_info.get('link')
+            class_type = class_info.get('type')
+            if link:
+                course_id, file_id = extract_ids_from_link(link)
+                class_info['course_id'] = course_id
+                class_info['file_id'] = file_id
+                print(f"Extracted IDs from link: course_id={course_id}, file_id={file_id}")
+            else:
+                print("No link provided for class:", class_info.get('class_name', 'Unknown Class'))
         save_classes(classes)
         return jsonify({'message': 'Classes saved successfully.'}), 200
     else:
@@ -126,10 +159,10 @@ def manage_classes():
 @app.route('/fetch-assignments', methods=['POST'])
 def fetch_assignments():
     # Check if user is authenticated
-    #if 'access_token' not in session:
-        #return redirect(url_for('login'))
+    if 'access_token' not in session:
+        return redirect(url_for('login'))
 
-    access_token = CANVAS_API_KEY #session['access_token']
+    access_token = session['access_token']
     data = request.json
     print("Received data:", data)
 
@@ -146,8 +179,24 @@ def fetch_assignments():
     for class_info in classes:
         class_name = class_info.get('class_name', 'Unknown Class')
         class_type = class_info.get('type')
+        link = class_info.get('link')
         course_id = class_info.get('course_id')
         file_id = class_info.get('file_id')
+
+        # If course_id or file_id are missing, try to extract from link
+        if not course_id or (class_type != 'canvas' and not file_id):
+            if link:
+                extracted_course_id, extracted_file_id = extract_ids_from_link(link)
+                if not course_id:
+                    course_id = extracted_course_id
+                    class_info['course_id'] = course_id
+                if not file_id and class_type != 'canvas':
+                    file_id = extracted_file_id
+                    class_info['file_id'] = file_id
+                print(f"Extracted IDs from link: course_id={course_id}, file_id={file_id}")
+            else:
+                print(f"No course_id or link provided for class '{class_name}'. Skipping.")
+                continue
 
         print(f"Processing class: Name={class_name}, Type={class_type}, Course ID={course_id}, File ID={file_id}")
 
